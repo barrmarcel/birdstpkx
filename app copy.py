@@ -5,83 +5,58 @@ import os
 
 app = Flask(__name__)
 
-# Load webhook
+# Your Webhook URL
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")
 
-print("🚨 SERVER STARTED")
-print("🔑 WEBHOOK VALUE:", WEBHOOK_URL)
-
-
 def fetch_pkstockx_status(email, order_no):
+    """
+    Scrapes pkstockx.org to find the order status span.
+    """
+    # The target URL based on user input
     url = f"https://www.pkstockx.org/trackorder?email={email}&order={order_no}"
-
+    
     headers = {
-        'User-Agent': 'Mozilla/5.0'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
-
-    print("🌐 Fetching URL:", url)
 
     try:
         response = requests.get(url, headers=headers, timeout=10)
-
-        print("🌐 Response Code:", response.status_code)
-
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
+            # Look for <span class="order-status label-success">
             status_element = soup.find("span", class_="order-status")
-
             if status_element:
-                status = status_element.text.strip()
-                print("✅ Found Status:", status)
-                return status
-
-            print("⚠️ Status tag not found")
+                return status_element.text.strip()
             return "Status tag not found"
-
         return f"Site Error ({response.status_code})"
-
     except Exception as e:
-        print("❌ Scrape Exception:", str(e))
         return "Connection Failed"
-
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-
 @app.route('/get_method', methods=["GET", "POST"])
 def get_numbers():
-    print("\n🔥 ROUTE HIT /get_method")
+    print("🔥 ROUTE HIT /get_method")
 
     if request.method == "POST":
         print("✅ POST REQUEST RECEIVED")
-        print("📦 FORM DATA:", request.form)
+        print("FORM DATA:", request.form)
 
         full_name = request.form.get("fullName")
         email = request.form.get("email")
         phone = request.form.get("phone")
         order_no = request.form.get("orderNo")
 
-        print("📦 Parsed:")
-        print("   Name:", full_name)
-        print("   Email:", email)
-        print("   Phone:", phone)
-        print("   Order:", order_no)
+        print("📦 Parsed Data:", full_name, email, phone, order_no)
 
-        # 🔍 Check webhook existence
-        if not WEBHOOK_URL:
-            print("❌ ERROR: WEBHOOK_URL IS NONE")
-        else:
-            print("✅ Webhook exists")
-
-        # 🔍 Scrape
         order_status = fetch_pkstockx_status(email, order_no)
-        print("📊 Final Status:", order_status)
+        print("📊 Scraped Status:", order_status)
 
         payload = {
             "username": "PKStockX Tracker",
-            "content": "🚨 NEW ORDER RECEIVED (DEBUG)",
+            "content": "🚨 NEW ORDER RECEIVED (DEBUG MODE)",
             "embeds": [
                 {
                     "title": "📦 Order Tracking Report",
@@ -99,10 +74,8 @@ def get_numbers():
             ]
         }
 
-        # 🔍 Send webhook
         try:
-            print("📡 Sending webhook...")
-
+            print("📡 Sending to Discord webhook...")
             response = requests.post(WEBHOOK_URL, json=payload)
 
             print("📬 Discord Status Code:", response.status_code)
@@ -110,17 +83,13 @@ def get_numbers():
 
             response.raise_for_status()
 
-            print("✅ Webhook sent successfully")
-
         except Exception as e:
-            print("❌ Webhook Error:", str(e))
+            print("❌ Discord Error:", str(e))
 
     else:
-        print("ℹ️ GET request received")
+        print("ℹ️ GET request received (no form submission)")
 
     return render_template('index.html')
 
-
-# Render uses gunicorn, but keep this for local
 if __name__ == '__main__':
     app.run(debug=True)
