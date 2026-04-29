@@ -1,11 +1,12 @@
 from flask import Flask, render_template, request
 import requests
 from bs4 import BeautifulSoup
+import os
 
 app = Flask(__name__)
 
 # Your Webhook URL
-WEBHOOK_URL = "https://discord.com/api/webhooks/1497801972085166100/wVht_t-TlPc62u-GeorvD3DwlcaIjGzc3yD6ZGbAWN9DJc-w4nK7QRTVVpWH6RwoJTAq"
+WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")
 
 def fetch_pkstockx_status(email, order_no):
     """
