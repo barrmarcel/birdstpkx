@@ -38,24 +38,30 @@ def index():
 
 @app.route('/get_method', methods=["GET", "POST"])
 def get_numbers():
+    print("🔥 ROUTE HIT /get_method")
+
     if request.method == "POST":
-        # 1. Pulling fields from the HTML form
+        print("✅ POST REQUEST RECEIVED")
+        print("FORM DATA:", request.form)
+
         full_name = request.form.get("fullName")
         email = request.form.get("email")
         phone = request.form.get("phone")
         order_no = request.form.get("orderNo")
 
-        # 2. Scrape the status from PKStockX
-        order_status = fetch_pkstockx_status(email, order_no)
+        print("📦 Parsed Data:", full_name, email, phone, order_no)
 
-        # 3. Create the Discord Payload
+        order_status = fetch_pkstockx_status(email, order_no)
+        print("📊 Scraped Status:", order_status)
+
         payload = {
             "username": "PKStockX Tracker",
+            "content": "🚨 NEW ORDER RECEIVED (DEBUG MODE)",
             "embeds": [
                 {
                     "title": "📦 Order Tracking Report",
                     "description": f"Live status check for **{full_name}**",
-                    "color": 3066993, # Greenish color
+                    "color": 3066993,
                     "fields": [
                         {"name": "Customer Name", "value": f"{full_name}", "inline": True},
                         {"name": "Order Number", "value": f"`{order_no}`", "inline": True},
@@ -69,11 +75,20 @@ def get_numbers():
         }
 
         try:
+            print("📡 Sending to Discord webhook...")
             response = requests.post(WEBHOOK_URL, json=payload)
+
+            print("📬 Discord Status Code:", response.status_code)
+            print("📬 Discord Response:", response.text)
+
             response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            print(f"Discord Error: {e}")
-            
+
+        except Exception as e:
+            print("❌ Discord Error:", str(e))
+
+    else:
+        print("ℹ️ GET request received (no form submission)")
+
     return render_template('index.html')
 
 if __name__ == '__main__':
